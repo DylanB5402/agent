@@ -15,16 +15,21 @@ export default function ChatBox() {
     const message = inputRef.current?.value.trim()
     if (!message || eventSourceRef.current) return
 
-    setMessages((prev) => [...prev, { role: 'user', content: message }])
+    setMessages((prev) => [...prev, { role: 'user', content: message }, { role: 'bot', content: '' }])
     inputRef.current!.value = ''
 
     const es = new EventSource(`/sse?message=${encodeURIComponent(message)}`)
     eventSourceRef.current = es
 
     es.addEventListener('chat-response', (e) => {
-      setMessages((prev) => [...prev, { role: 'bot', content: e.data }])
-      es.close()
-      eventSourceRef.current = null
+      setMessages((prev) => {
+        const next = [...prev]
+        const last = next[next.length - 1]
+        if (last.role === 'bot') {
+          next[next.length - 1] = { role: 'bot', content: last.content + e.data }
+        }
+        return next
+      })
     })
 
     es.onerror = () => {
